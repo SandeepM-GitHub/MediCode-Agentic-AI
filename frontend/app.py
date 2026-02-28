@@ -40,16 +40,47 @@ def fetch_global_metrics():
     finally:
         db.close()
 
+# Human review block fetching data for "Suspicious claims"
+def fetch_all_claims():
+    """
+    Fetches all claims for the Filing Cabinet table and formats them
+    for Pandas
+    """
+    db = SessionLocal()
+    try:
+        # Fetch all claims, ordered by the newest first
+        claims = db.query(Claim).order_by(Claim.id.desc()).all()
+
+        # Convert the SQLAlchemy objects into a list of dictionaries for Pandas
+        data = []
+        for c in claims:
+            data.append({
+                "ID": c.id,
+                "Status": c.status.upper(),
+                "ICD-10": c.icd10_code,
+                "CPT": c.cpt_code,
+                "Confidence": round(c.confidence_score, 3) if c.confidence_score else 0.0,
+                "Rule Trigger": c.rejection_reason or "PASS",
+                "Stripe TX": c.stripe_transaction_id or "-"
+            })
+        return pd.DataFrame(data)
+    finally:
+        db.close()
+
 # 5. UI HEADER & METRICS
 st.title("⚕️ MediCodeAgent: Systems Architect Dashboard")
 
 # Dynamically detect hardware
-device_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
-device_status = "ACTIVE" if torch.cuda.is_available() else "INACTIVE"
+if torch.cuda.is_available():
+    device_name = torch.cuda.get_device_name(0)
+    device_status = "ACTIVE"
+else:
+    device_name = "CPU"
+    device_status = "ACTIVE"
 vector_db = "FAISS"
 llm_model = "Llama 3.2 3B"
 
-st.markdown(f"**Hardware Status:** `{device_name} (CUDA): {device_status}` | **Vector DB:** `{vector_db}` | **LLM:** `{llm_model}`")
+st.markdown(f"**Hardware Status:** `{device_name}: {device_status}` | **Vector DB:** `{vector_db}` | **LLM:** `{llm_model}`")
 st.divider()
 
 total, rev, susp, rej_rate = fetch_global_metrics()
@@ -76,21 +107,18 @@ def get_agent():
 
 agent = get_agent()
 
-# --- LAYOUT: SIDEBAR (Intake) ---
+# 7. LAYOUT: SIDEBAR (Intake)
 st.sidebar.header("📄 Clinical Intake")
 st.sidebar.markdown("Paste the physician's note below to begin the Agentic pipeline.")
-
 clinical_note = st.sidebar.text_area(
     "Physician Note:", 
     height=250, 
     value="Patient complains of acute pharyngitis. Performed rapid strep test."
 )
-
 process_btn = st.sidebar.button("🚀 Process Claim", type="primary", use_container_width=True)
 
-# --- MAIN STAGE: AGENT EXECUTION ---
+# 8. MAIN STAGE: AGENT EXECUTION
 st.subheader("Live Agent Execution")
-
 # This block ONLY runs when the user clicks the button
 if process_btn:
     if not clinical_note.strip():
@@ -135,3 +163,71 @@ if process_btn:
 
 st.divider()
 
+# Filing Cabinet and Human-In-Loop
+st.subheader("🗄️ Filing Cabinet & Human-in-the-Loop")
+
+#  Display the Database Table
+df_claims = fetch_all_claims()
+if not df_claims.empty:
+    st.dataframe(df_claims, width = "stretch", hide_index=True)
+else:
+    st.info("No Claims in database yet.")
+st.divider()
+
+# Auditor Action UI (The Override Form)
+st.markdown("#### 🧑‍⚖️ Human Auditor Action")
+st.markdown("Select a **SUSPICIOUS** claim ID from the table above to manually override and force a payout.")
+
+# 3-Column layout for the input form
+audit_col1, audit_col2, audit_col3 = st.columns([1, 3, 1])
+
+with audit_col1:
+    claim_id_to_review = st.number_input("Claim ID", min_value=1, step=1)
+with audit_col2:
+    auditor_notes = st.text_input("Auditor Notes (*Required)", placeholder="e.g., Reviewed patient history, acceptable vagueness.")
+with audit_col3:
+    st.markdown("<br>", unsafe_allow_html=True) # Addind a blank line so the button aligns with the text boxes
+
+    # Create two buttons side-by-side
+    btn_col1, btn_col2 = st.columns(2)
+    
+    with btn_col1:
+        if st.button("✅ Approve", type="secondary", use_container_width=True):
+            if not auditor_notes:
+                st.error("Notes required!")
+            else:
+                res = submit_human_review(claim_id_to_review, "approved", "Architect", auditor_notes)
+                if "SUCCESS" in res:
+                    st.success(res)
+                    st.rerun() # This forces the Streamlit app to refresh from the top
+                else:
+                    st.error(res)
+
+    with btn_col2:
+        if st.button("❌ Reject", type="secondary", use_container_width=True):
+            if not auditor_notes:
+                st.error("Notes required!")
+            else:
+                res = submit_human_review(claim_id_to_review, "rejected", "Architect", auditor_notes)
+                if "SUCCESS" in res:
+                    st.warning(res)
+                    st.rerun() # This forces the Streamlit app to refresh from the top
+                else:
+                    st.error(res)
+    # # The Override Button
+    # if st.button("Override to Approve manually", type="secondary"):
+    #     if not auditor_notes:
+    #         st.error("Please provide auditor notes before overriding.")
+    #     else:
+    #         # Calling the backend function from "review.py"
+    #         review_result = submit_human_review(
+    #             claim_id = claim_id_to_review,
+    #             decision = "approved",
+    #             reviewer_name = "Senior Medical Biller",
+    #             notes = auditor_notes
+    #         )
+    #         if "SUCCESS" in review_result:
+    #             st.success(review_result)
+    #             st.rerun() # This forces the Streamlit app to refresh from the top
+    #         else:
+    #             st.error(review_result)
