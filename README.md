@@ -35,6 +35,10 @@ Complete automation is a liability without oversight. If the deterministic rule 
 
 The Streamlit UI includes an Auditor Dashboard where a Human-in-the-Loop can review the AI's reasoning, provide manual justification, and explicitly override the system to either **Reject** or **Approve & Pay** the claim.
 
+<kbd>
+  <img width="1854" height="868" alt="image" src="https://github.com/user-attachments/assets/d4bd8b4c-d3aa-48ed-8fc5-0bea549c2303" />
+</kbd>
+
 ---
 
 ## 🚀 How to Run the Project Locally
@@ -81,7 +85,7 @@ Vector Match: `High confidence` (>0.85) for J02.9 and 87880.
 
 Rule Engine: Passes. Triggers a successful Stripe transaction.
 <kbd>
-![WhatsApp Image 2026-03-01 at 1 10 19 PM](https://github.com/user-attachments/assets/fe80cdc5-4103-42bc-afea-0fbc422cbf1a)
+<img width="1847" height="825" alt="image" src="https://github.com/user-attachments/assets/3a771338-4ea9-48cf-9c39-598fb3805545" />
 </kbd>
 
 ### 2. The "Vague/Low Confidence" Path (Expected Result: ⚠️ SUSPICIOUS)
@@ -96,7 +100,7 @@ Vector Match: Matches R53.81 (Other malaise) but with a `low confidence` score (
 
 Rule Engine: Flags as `R1_LOW_CONFIDENCE`. Halts payment. Requires you to manually review and approve/reject at the bottom of the dashboard.
 <kbd>
-![WhatsApp Image 2026-03-01 at 1 08 32 PM](https://github.com/user-attachments/assets/bf016fba-f273-40ce-93dc-fde17bce9b1b)
+<img width="1851" height="864" alt="image" src="https://github.com/user-attachments/assets/41ec5285-31b2-4cf6-a37e-e886b646426e" />
 </kbd>
 
 ### 3. The "Missing Data" Path (Expected Result: ❌ REJECTED)
@@ -110,5 +114,5 @@ Vector Match: Finds S93.4 (Sprain of ankle) but fails to find a CPT code.
 
 Rule Engine: Flags as `R0_MISSING_DATA` because an insurance claim cannot be billed without a valid procedure code. Claim is hard-rejected.
 <kbd>
-![WhatsApp Image 2026-03-01 at 1 11 21 PM](https://github.com/user-attachments/assets/d3508136-b5ef-4f74-a520-93fb95e5414f)
+<img width="1835" height="846" alt="image" src="https://github.com/user-attachments/assets/acca744e-26cf-4b2c-9785-3429b01fb684" />
 </kbd>
