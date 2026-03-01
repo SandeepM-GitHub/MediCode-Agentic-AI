@@ -72,26 +72,32 @@ To see the Agentic RAG system handle different scenarios, copy and paste these e
 ### 1. The "Happy Path" (Expected Result: ✅ APPROVED)
 This note is clear, matches our vector database perfectly, and satisfies the medical necessity rules.
 ```bash
-"Patient presents with a severe sore throat and difficulty swallowing.
-Performed a rapid strep test in the clinic today."
+"Patient complains of acute pharyngitis. Performed rapid strep test in the clinic today."
 ```
 
-AI Action: Extracts "severe sore throat" and "rapid strep test".
+AI Action: Extracts "acute pharyngitis" and "rapid strep test".
 
 Vector Match: `High confidence` (>0.85) for J02.9 and 87880.
 
 Rule Engine: Passes. Triggers a successful Stripe transaction.
+<kbd>
+![WhatsApp Image 2026-03-01 at 1 10 19 PM](https://github.com/user-attachments/assets/fe80cdc5-4103-42bc-afea-0fbc422cbf1a)
+</kbd>
 
 ### 2. The "Vague/Low Confidence" Path (Expected Result: ⚠️ SUSPICIOUS)
 This note uses non-clinical language. The AI will find a match, but the math score will fall below the safety threshold, triggering the Human-in-the-Loop.
 ```bash
-"The patient came in saying they feel super weird and tired all the time."
+"The patient came in saying they feel super weird about throat itching issue and
+performed strep test."
 ```
-AI Action: Extracts "feel super weird and tired".
+AI Action: Extracts "super weird about throat".
 
 Vector Match: Matches R53.81 (Other malaise) but with a `low confidence` score (e.g., ~0.65).
 
 Rule Engine: Flags as `R1_LOW_CONFIDENCE`. Halts payment. Requires you to manually review and approve/reject at the bottom of the dashboard.
+<kbd>
+![WhatsApp Image 2026-03-01 at 1 08 32 PM](https://github.com/user-attachments/assets/bf016fba-f273-40ce-93dc-fde17bce9b1b)
+</kbd>
 
 ### 3. The "Missing Data" Path (Expected Result: ❌ REJECTED)
 This note describes a diagnosis but completely fails to mention any procedure being performed.
@@ -103,14 +109,6 @@ AI Action: Extracts the diagnosis (Ankle sprain) but outputs "None" for the proc
 Vector Match: Finds S93.4 (Sprain of ankle) but fails to find a CPT code.
 
 Rule Engine: Flags as `R0_MISSING_DATA` because an insurance claim cannot be billed without a valid procedure code. Claim is hard-rejected.
-
-### 4. The "Fraud/Mismatch" Path (Expected Result: ❌ REJECTED)
-This note is an example of medical billing fraud (upcoding or mismatched services). The agent must catch this.
-```bash
-"Patient complains of a sore throat. We took an X-ray of their foot."
-```
-AI Action: Extracts "sore throat" and "X-ray of foot".
-
-Vector Match: Finds J02.9 (Pharyngitis) and 73630 (Radiologic exam, foot).
-
-Rule Engine: Flags as `R2_MEDICAL_NECESSITY_FAIL`. The deterministic rules explicitly forbid billing a foot x-ray for a throat complaint. Claim is hard-rejected.
+<kbd>
+![WhatsApp Image 2026-03-01 at 1 11 21 PM](https://github.com/user-attachments/assets/d3508136-b5ef-4f74-a520-93fb95e5414f)
+</kbd>
