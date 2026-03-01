@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # 2. Backend Imports
 from backend.core.agent import build_agent
 from backend.core.review import submit_human_review
+from backend.core.payments import process_claim_payout
 from backend.data.db import SessionLocal, Claim
 
 # 3. UI Configuration
@@ -130,14 +131,19 @@ if process_btn:
             st.write(f"⚡ Querying {vector_db} on {device_name}...")
             st.write("⚖️ Evaluating against Deterministic Payer Rules...")
             
-            # 🔥 THE CROWN JEWEL: Running your backend pipeline!
+            # 🔥 THE CROWN JEWEL: Running the backend pipeline!
             result = agent.invoke({"clinical_note": clinical_note, "messages": []})
             
             status.update(label="Pipeline Complete!", state="complete", expanded=False)
         
         # Extract the results cleanly
         final_status = result.get("status", "error").lower()
-        tx_id = result.get("stripe_transaction_id") or "N/A"
+        # Peeking for transaction ID in the updated table
+        latest_claims_df = fetch_all_claims()
+        if not latest_claims_df.empty and latest_claims_df.iloc[0]["Stripe TX"] != "-":
+            tx_id = latest_claims_df.iloc[0]["Stripe TX"]
+        else:
+            tx_id = "N/A"
         rule_id = result.get("rule_id", "UNKNOWN")
         reason = result.get("rejection_reason", "No reason provided.")
         icd10 = result.get("final_icd10_code", "None")
